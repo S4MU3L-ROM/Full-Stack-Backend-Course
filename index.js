@@ -1,3 +1,4 @@
+require('dotenv').config()
 const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
@@ -5,18 +6,8 @@ const cors = require('cors')
 // Database creation
 const mongoose = require('mongoose')
 
-if (process.argv.length<3) {
-    console.log('give password as argument')
-    process.exit(1)
-}
-
-
-const password = process.argv[2]
-
-const url =
-    `mongodb+srv://db_phone_directory:${password}@cluster0.5qiogmo.mongodb.net/directory?appName=Cluster0`
-
-mongoose.set('strictQuery',false)
+const password = encodeURIComponent(process.env.MONGO_PASSWORD);
+const url = `mongodb+srv://db_full_stack:${password}@cluster0.5qiogmo.mongodb.net/directory?appName=Cluster0`;
 
 mongoose.connect(url)
 
@@ -79,33 +70,34 @@ app.get('/info', (request, response) => {
 })
 
 app.get('/api/persons', (request, response) => {
-    Contact.find().then(result => {
-        console.log(result[0])
-        mongoose.connection.close()
+    Contact.find().then(person => {
+            response.json(person)
     })
 })
 
 app.get('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    const phonebook = directory.find(person => person.id === id)
+    const id = request.params.id
 
-    if (phonebook) {
-        response.json(phonebook)
-    } else {
-        response.status(404).end()
-    }
+    Contact.findById(id)
+        .then(person => {
+            if (person) {
+                response.json(person)
+            } else {
+                response.status(404).json({
+                    error: 'contact not found'
+                })
+            }
+        })
 })
 
 app.delete('/api/persons/:id', (request, response) => {
-    const id = Number(request.params.id)
-    directory = directory.filter(person => person.id !== id)
+    const id = request.params.id
 
-    response.status(204).end()
+    Contact.findByIdAndDelete(id)
+        .then(() => {
+            response.status(204).end()
+        })
 })
-
-const generateId = () => {
-    return Math.floor(Math.random() * 1000000)
-}
 
 app.post('/api/persons', (request, response) => {
     const body = request.body
@@ -130,15 +122,16 @@ app.post('/api/persons', (request, response) => {
         })
     }
 
-    const person = {
+    const contact = new Contact({
         name: body.name,
         number: body.number,
-        id: generateId(),
-    }
+    })
 
-    directory = directory.concat(person)
+    contact.save().then(savedContact => {
+        console.log(`added ${body.name} number ${body.number} to phonebook`)
+        response.status(201).json(savedContact)
+    })
 
-    response.json(person)
 })
 
 const PORT = 3001

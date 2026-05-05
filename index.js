@@ -2,6 +2,30 @@ const express = require('express')
 const morgan = require('morgan')
 const cors = require('cors')
 
+// Database creation
+const mongoose = require('mongoose')
+
+if (process.argv.length<3) {
+    console.log('give password as argument')
+    process.exit(1)
+}
+
+
+const password = process.argv[2]
+
+const url =
+    `mongodb+srv://db_phone_directory:${password}@cluster0.5qiogmo.mongodb.net/directory?appName=Cluster0`
+
+mongoose.set('strictQuery',false)
+
+mongoose.connect(url)
+
+const contactSchema = new mongoose.Schema({
+    name: String,
+    number: String,
+})
+
+const Contact = mongoose.model('Contact', contactSchema)
 
 
 const app = express()
@@ -11,7 +35,7 @@ app.use(express.static('dist'))
 app.use(cors())
 
 
-morgan.token('body', (request) => {
+/*morgan.token('body', (request) => {
     if (request.method === 'POST') {
         return JSON.stringify(request.body)
     }
@@ -19,7 +43,7 @@ morgan.token('body', (request) => {
     return ''
 })
 
-app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))
+app.use(morgan(':method :url :status :res[content-length] - :response-time ms :body'))*/
 
 let directory = [
     {
@@ -55,7 +79,10 @@ app.get('/info', (request, response) => {
 })
 
 app.get('/api/persons', (request, response) => {
-    response.json(directory)
+    Contact.find().then(result => {
+        console.log(result[0])
+        mongoose.connection.close()
+    })
 })
 
 app.get('/api/persons/:id', (request, response) => {
